@@ -134,11 +134,17 @@ def PossibleMoves(board, infobox, root):
 								for_range = range(len(perm[:perm_index]))
 
 							# Playing tiles in range
+							valid = True
 							for i in for_range:
 								perm_index += forward_backward
 								pointer_space_coords[0] += numericed_direction[0]
 								pointer_space_coords[1] += numericed_direction[1]
-								pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
+								try: # Bodge job to fix out of range error
+									pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
+								except:
+									valid = False
+									print("Found out of range error")
+									break
 
 
 								if pointer_space.tile == None:
@@ -157,42 +163,46 @@ def PossibleMoves(board, infobox, root):
 						points += CountPoints(played_tiles, board)
 
 						# Iterate through each played tile to find cross words
-						valid = True
-						for anchor_tile in played_tiles:
-							word = ""
-							for forward_backward in [1,-1]:
-								numericed_direction = numerice_direction(not(direction), forward_backward)
-								if forward_backward == 1:
-									pointer_space_coords = [int(anchor_tile.position[0]),
-															int(anchor_tile.position[1])]
-								else:
-									pointer_space_coords = [int(anchor_tile.position[0])+numericed_direction[0],
-															int(anchor_tile.position[1])+numericed_direction[1]]
-									
-								xOK = pointer_space_coords[0]<config.num_tiles
-								yOK = pointer_space_coords[1]<config.num_tiles
-								while xOK and yOK:
-									pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
-
-									if pointer_space.tile == None:
-										break
-
+						if valid:
+							for anchor_tile in played_tiles:
+								word = ""
+								for forward_backward in [1,-1]:
+									numericed_direction = numerice_direction(not(direction), forward_backward)
 									if forward_backward == 1:
-										word += pointer_space.tile.GetLetter()
+										pointer_space_coords = [int(anchor_tile.position[0]),
+																int(anchor_tile.position[1])]
 									else:
-										word = pointer_space.tile.GetLetter() + word
-
-									pointer_space_coords[0] += numericed_direction[0]
-									pointer_space_coords[1] += numericed_direction[1]
-
-							if len(word)==1:
-								continue
-
-							if not(FindWord(word)):
-								valid = False
-								break
-							else:
-								points += CountPoints(None, None, word)
+										pointer_space_coords = [int(anchor_tile.position[0])+numericed_direction[0],
+																int(anchor_tile.position[1])+numericed_direction[1]]
+										
+									xOK = pointer_space_coords[0]<config.num_tiles
+									yOK = pointer_space_coords[1]<config.num_tiles
+									while xOK and yOK:
+										pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
+	
+										if pointer_space.tile == None:
+											break
+	
+										if forward_backward == 1:
+											word += pointer_space.tile.GetLetter()
+										else:
+											word = pointer_space.tile.GetLetter() + word
+	
+										pointer_space_coords[0] += numericed_direction[0]
+										pointer_space_coords[1] += numericed_direction[1]
+	
+								if len(word)==1:
+									continue
+	
+								if not(FindWord(word)):
+									valid = False
+									break
+								else:
+									points += CountPoints(None, None, word)
+						else:
+							print("Due to this:")
+							saveload.loadGame(game_index, board, infobox, root)
+							continue
 
 						if valid and points > best_move[1]:# If it's better than the
 							                               #current saved best move
@@ -204,6 +214,9 @@ def PossibleMoves(board, infobox, root):
 						saveload.loadGame(game_index, board, infobox, root)
 				print(f"Eliminated {invalids} moves pre-word check")
 	saveload.loadGame(best_move[0], board, infobox) # Load the best move found
+	
+	if best_move[1] == 0: # To prevent getting stuck if no moves are found
+		infobox.SwapTurn(board)
 
 def numerice_direction(direction, forwards_backwards):
 	if direction and forwards_backwards == 1: # Right
