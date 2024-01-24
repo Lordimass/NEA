@@ -81,14 +81,15 @@ def PossibleMoves(board, infobox, root):
 				print(f"Iterating over {count} possible moves for ({colNum},{rowNum}) (Horizontal = {direction})") 
 
 				best_move = [game_index, 0] # [index of games.csv of the best move save,
-				                            # number of points it scores]
+											# number of points it scores]
 				invalids = 0
 				# Generate all possible combinations of letters from the rack that will fit in the gaps
 				for count in range(1, gls.count(" ")):
 					for perm in itertools.permutations(rack_letters, count):
+						valid = True
 						points = 0
 						perm = list_to_string(perm) # Perm is returned as a list of letters,
-						                            # so it needs to be converted to a string
+													# so it needs to be converted to a string
 						perm = perm.strip(" ")
 
 						if (perm in words) or (perm.count(" ") > 0): # Skipping duplicate and invalid results
@@ -103,7 +104,7 @@ def PossibleMoves(board, infobox, root):
 							index += 1
 
 						words.append(perm)
-						
+
 						# If word is invalid, move to next permutation
 						if not FindWord(perm, False): 
 							continue
@@ -134,18 +135,14 @@ def PossibleMoves(board, infobox, root):
 								for_range = range(len(perm[:perm_index]))
 
 							# Playing tiles in range
-							valid = True
 							for i in for_range:
 								perm_index += forward_backward
 								pointer_space_coords[0] += numericed_direction[0]
 								pointer_space_coords[1] += numericed_direction[1]
-								try: # Bodge job to fix out of range error
+								try:
 									pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
 								except:
 									valid = False
-									print("Found out of range error")
-									break
-
 
 								if pointer_space.tile == None:
 									# Finding the tile in the player's rack to play
@@ -163,49 +160,44 @@ def PossibleMoves(board, infobox, root):
 						points += CountPoints(played_tiles, board)
 
 						# Iterate through each played tile to find cross words
-						if valid:
-							for anchor_tile in played_tiles:
-								word = ""
-								for forward_backward in [1,-1]:
-									numericed_direction = numerice_direction(not(direction), forward_backward)
-									if forward_backward == 1:
-										pointer_space_coords = [int(anchor_tile.position[0]),
-																int(anchor_tile.position[1])]
-									else:
-										pointer_space_coords = [int(anchor_tile.position[0])+numericed_direction[0],
-																int(anchor_tile.position[1])+numericed_direction[1]]
-										
-									xOK = pointer_space_coords[0]<config.num_tiles
-									yOK = pointer_space_coords[1]<config.num_tiles
-									while xOK and yOK:
-										pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
-	
-										if pointer_space.tile == None:
-											break
-	
-										if forward_backward == 1:
-											word += pointer_space.tile.GetLetter()
-										else:
-											word = pointer_space.tile.GetLetter() + word
-	
-										pointer_space_coords[0] += numericed_direction[0]
-										pointer_space_coords[1] += numericed_direction[1]
-	
-								if len(word)==1:
-									continue
-	
-								if not(FindWord(word)):
-									valid = False
-									break
+						for anchor_tile in played_tiles:
+							word = ""
+							for forward_backward in [1,-1]:
+								numericed_direction = numerice_direction(not(direction), forward_backward)
+								if forward_backward == 1:
+									pointer_space_coords = [int(anchor_tile.position[0]),
+															int(anchor_tile.position[1])]
 								else:
-									points += CountPoints(None, None, word)
-						else:
-							print("Due to this:")
-							saveload.loadGame(game_index, board, infobox, root)
-							continue
+									pointer_space_coords = [int(anchor_tile.position[0])+numericed_direction[0],
+															int(anchor_tile.position[1])+numericed_direction[1]]
+
+								xOK = pointer_space_coords[0]<config.num_tiles
+								yOK = pointer_space_coords[1]<config.num_tiles
+								while xOK and yOK:
+									pointer_space = board[pointer_space_coords[1]][pointer_space_coords[0]]
+
+									if pointer_space.tile == None:
+										break
+
+									if forward_backward == 1:
+										word += pointer_space.tile.GetLetter()
+									else:
+										word = pointer_space.tile.GetLetter() + word
+
+									pointer_space_coords[0] += numericed_direction[0]
+									pointer_space_coords[1] += numericed_direction[1]
+
+							if len(word)==1:
+								continue
+
+							if not(FindWord(word)):
+								valid = False
+								break
+							else:
+								points += CountPoints(None, None, word)
 
 						if valid and points > best_move[1]:# If it's better than the
-							                               #current saved best move
+														   #current saved best move
 							player.AddPoints(points)
 							infobox.SwapTurn(board)
 							infobox.UpdateText()
@@ -214,7 +206,7 @@ def PossibleMoves(board, infobox, root):
 						saveload.loadGame(game_index, board, infobox, root)
 				print(f"Eliminated {invalids} moves pre-word check")
 	saveload.loadGame(best_move[0], board, infobox) # Load the best move found
-	
+
 	if best_move[1] == 0: # To prevent getting stuck if no moves are found
 		infobox.SwapTurn(board)
 
